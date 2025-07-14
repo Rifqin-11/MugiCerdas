@@ -48,7 +48,7 @@ export default function MyLibrary() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [bookToDelete, setBookToDelete] = useState<BookData | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [viewMode, setViewMode] = useState<"card" | "list">("list");
 
   const { toast } = useToast();
 

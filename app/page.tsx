@@ -198,6 +198,29 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Manage Library (compact) */}
+        <div className="bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-100 p-2 rounded-full">
+              <Eye className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Manage Your Library
+              </h3>
+              <p className="text-sm text-gray-600">
+                View, search, and export your books
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/my-library"
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow"
+          >
+            Go to Library
+          </Link>
+        </div>
+
         {/* How it works */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-8 text-center">
@@ -237,25 +260,6 @@ export default function Home() {
                 <p className="text-gray-600">{desc}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* My Library */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="text-center space-y-4">
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Manage Your Library
-            </h2>
-            <p className="text-gray-600">
-              View, search, and export your complete book catalog
-            </p>
-            <Link
-              href="/my-library"
-              className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              <Eye className="w-5 h-5" />
-              View My Library
-            </Link>
           </div>
         </div>
 
