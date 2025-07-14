@@ -2,45 +2,63 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Eye, Save, FileImage, Loader2 } from "lucide-react";
+import { Upload, FileImage, Loader2, Eye, Save } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image";
+
+// Fungsi untuk compress & resize image
+async function compressImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const maxDim = 1024;
+  let [w, h] = [bitmap.width, bitmap.height];
+  if (w > h && w > maxDim) {
+    h = Math.round((h * maxDim) / w);
+    w = maxDim;
+  } else if (h > w && h > maxDim) {
+    w = Math.round((w * maxDim) / h);
+    h = maxDim;
+  }
+
+  // Pilih OffscreenCanvas jika tersedia
+  const canvas =
+    typeof OffscreenCanvas !== "undefined"
+      ? new OffscreenCanvas(w, h)
+      : document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (ctx && "drawImage" in ctx) {
+    ctx.drawImage(bitmap, 0, 0, w, h);
+  } else {
+    throw new Error("2D rendering context not available or does not support drawImage.");
+  }
+
+  return new Promise((resolve) => {
+    if ("convertToBlob" in canvas) {
+      (canvas as OffscreenCanvas)
+        .convertToBlob({ type: "image/jpeg", quality: 0.7 })
+        .then(resolve);
+    } else {
+      (canvas as HTMLCanvasElement).toBlob(
+        (blob) => resolve(blob!),
+        "image/jpeg",
+        0.7
+      );
+    }
+  });
+}
 
 export default function Home() {
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    }
-  };
-
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragOver(false);
-    const files = event.dataTransfer.files;
-    if (files.length > 0 && files[0].type.startsWith("image/")) {
-      const file = files[0];
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -51,157 +69,132 @@ export default function Home() {
     }
 
     setIsExtracting(true);
-
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-
     try {
+      const blob = await compressImage(selectedFile);
+      const formData = new FormData();
+      formData.append("file", blob, selectedFile.name);
+
+      // 👉 Endpoint diganti ke /api/upload
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
-        throw new Error("Failed to extract book data");
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || "Failed to extract data");
       }
 
-      const result = await res.json();
-      sessionStorage.setItem("extractedBookData", JSON.stringify(result.book));
+      const { book } = await res.json();
+      sessionStorage.setItem("extractedBookData", JSON.stringify(book));
 
       if (previewUrl) {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const img = new window.Image();
-
+        const img = new Image();
+        img.src = previewUrl;
         img.onload = () => {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx?.drawImage(img, 0, 0);
-          const base64 = canvas.toDataURL("image/jpeg", 0.8);
-          sessionStorage.setItem("uploadedBookImage", base64);
+          const c = document.createElement("canvas");
+          c.width = img.width;
+          c.height = img.height;
+          c.getContext("2d")!.drawImage(img, 0, 0);
+          sessionStorage.setItem(
+            "uploadedBookImage",
+            c.toDataURL("image/jpeg", 0.8)
+          );
           router.push("/book-editor");
         };
-
-        img.src = previewUrl;
       } else {
         router.push("/book-editor");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("An error occurred while extracting data.");
+      alert(`Extraction failed: ${err.message}`);
       setIsExtracting(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
             Mugi Cerdas Library
           </h1>
-          <p className="text-xl text-gray-600 font-medium">
+          <p className="text-xl text-gray-600">
             Smart book cataloging with just one photo
           </p>
         </div>
 
         {/* Upload Section */}
         <div className="bg-white rounded-xl shadow-md p-6 space-y-4">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+          <h2 className="text-2xl font-semibold text-gray-800">
             Upload Book Info Page
           </h2>
-
           <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
-              isDragOver
-                ? "border-blue-400 bg-blue-50"
-                : selectedFile
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200 ${
+              selectedFile
                 ? "border-green-400 bg-green-50"
-                : "border-blue-300 bg-blue-50 hover:border-blue-400"
-            } cursor-pointer`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => {
-              const fileInput = document.querySelector(
-                'input[type="file"]'
-              ) as HTMLInputElement;
-              fileInput?.click();
-            }}
+                : "border-blue-300 hover:border-blue-400 bg-blue-50"
+            }`}
+            onClick={() => document.getElementById("file-input")!.click()}
           >
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                {selectedFile ? (
-                  <FileImage className="w-12 h-12 text-green-500" />
-                ) : (
-                  <Upload className="w-12 h-12 text-blue-500" />
-                )}
-              </div>
+            {selectedFile ? (
+              <FileImage className="w-12 h-12 text-green-500 mx-auto" />
+            ) : (
+              <Upload className="w-12 h-12 text-blue-500 mx-auto" />
+            )}
 
-              {selectedFile ? (
-                <div className="space-y-2">
-                  <p className="text-green-600 font-medium">File selected:</p>
-                  {previewUrl && (
-                    <div className="flex justify-center mb-3">
-                      <Image
-                        src={previewUrl}
-                        alt="Preview"
-                        className="max-w-32 max-h-32 object-cover rounded-lg border border-gray-200"
-                        width={128}
-                        height={128}
-                      />
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-600">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-500">
-                    Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-gray-600">
-                    Drag and drop an image here, or{" "}
-                    <label className="text-blue-500 hover:text-blue-600 cursor-pointer font-medium">
-                      browse files
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                    </label>
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Supports: JPG, PNG, WEBP (Max 10MB)
-                  </p>
-                </div>
-              )}
-            </div>
+            {selectedFile ? (
+              <>
+                {previewUrl && (
+                  <div className="flex justify-center my-3">
+                    <NextImage
+                      src={previewUrl}
+                      alt="Preview"
+                      width={128}
+                      height={128}
+                      className="rounded-lg border border-gray-200"
+                    />
+                  </div>
+                )}
+                <p className="text-gray-800">{selectedFile.name}</p>
+                <p className="text-xs text-gray-500">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </>
+            ) : (
+              <p className="text-gray-600">
+                Drag & drop or click to browse (JPG/PNG, max 10 MB)
+              </p>
+            )}
+
+            <input
+              id="file-input"
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
 
-          {/* Extract Button */}
           <button
             onClick={handleExtractData}
-            disabled={!selectedFile || isExtracting}
-            className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 flex justify-center items-center gap-2 ${
-              !selectedFile || isExtracting
+            disabled={isExtracting || !selectedFile}
+            className={`w-full py-3 rounded-lg font-medium flex justify-center items-center gap-2 ${
+              isExtracting || !selectedFile
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
             }`}
           >
             {isExtracting ? (
-              <>
-                <Loader2 className="animate-spin w-5 h-5" />
-                Extracting...
-              </>
+              <Loader2 className="animate-spin w-5 h-5" />
             ) : (
               "Extract Data"
             )}
           </button>
         </div>
 
-        {/* Manage Library (compact) */}
         <div className="bg-white rounded-lg shadow-md p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="bg-blue-100 p-2 rounded-full">
@@ -224,7 +217,6 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* How it works */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <h2 className="text-2xl font-semibold text-gray-800 mb-8 text-center">
             How It Works
@@ -268,7 +260,7 @@ export default function Home() {
 
         {/* Footer */}
         <div className="text-center text-gray-500 text-sm">
-          <p>&copy; 2025 Mugi Cerdas. Smart cataloging for modern libraries.</p>
+          &copy; 2025 Mugi Cerdas Library
         </div>
       </div>
     </div>

@@ -1,70 +1,64 @@
+// lib/azureOCR.ts
 import axios from "axios";
+import crypto from "crypto";
 
 const AZURE_ENDPOINT = process.env.AZURE_ENDPOINT!;
 const AZURE_KEY = process.env.AZURE_KEY!;
 
-export async function extractTextFromImage(imageBuffer: Buffer) {
-  const url = `${AZURE_ENDPOINT}/vision/v3.2/read/analyze`;
+// Cache sederhana di memori: { hashImage → teks OCR }
+const ocrCache = new Map<string, string>();
 
-  try {
-    console.log("🔵 Mengirim gambar ke Azure OCR...");
-
-    const response = await axios.post(url, imageBuffer, {
-      headers: {
-        "Ocp-Apim-Subscription-Key": AZURE_KEY,
-        "Content-Type": "application/octet-stream",
-      },
-    });
-
-    const operationLocation = response.headers["operation-location"];
-    console.log("📍 Azure operation-location:", operationLocation);
-
-    if (!operationLocation) {
-      throw new Error("Gagal mendapatkan operation-location dari Azure OCR.");
-    }
-
-    let result: string | null = null;
-
-    for (let i = 0; i < 15; i++) {
-      console.log(`⏳ Polling status Azure OCR (attempt ${i + 1})...`);
-      await new Promise((res) => setTimeout(res, 1500));
-
-      const poll = await axios.get(operationLocation, {
-        headers: {
-          "Ocp-Apim-Subscription-Key": AZURE_KEY,
-        },
-      });
-
-      const status = poll.data.status;
-      console.log(`📦 Status OCR: ${status}`);
-
-      if (status === "succeeded") {
-        const lines = poll.data.analyzeResult.readResults
-          .map((r: any) => r.lines.map((l: any) => l.text))
-          .flat()
-          .join("\n");
-
-        result = lines;
-        break;
-      }
-
-      if (status === "failed") {
-        throw new Error("Azure OCR gagal memproses gambar.");
-      }
-    }
-
-    if (!result) {
-      throw new Error("OCR timeout atau tidak berhasil.");
-    }
-
-    console.log("✅ OCR berhasil dijalankan.");
-    return result;
-  } catch (error: any) {
-    if (axios.isAxiosError(error)) {
-      console.error("🟥 Axios error:", error.response?.data || error.message);
-    } else {
-      console.error("🟥 General error:", error.message || error);
-    }
-    throw new Error("Proses OCR gagal dijalankan.");
+export async function extractTextFromImage(
+  imageBuffer: Buffer
+): Promise<string> {
+  // Hitung SHA-256 sebagai key cache
+  const hash = crypto.createHash("sha256").update(imageBuffer).digest("hex");
+  if (ocrCache.has(hash)) {
+    console.log("⚡️ Menggunakan cache OCR");
+    return ocrCache.get(hash)!;
   }
+
+  const url = `${AZURE_ENDPOINT}/vision/v3.2/read/analyze`;
+  const headers = {
+    "Ocp-Apim-Subscription-Key": AZURE_KEY,
+    "Content-Type": "application/octet-stream",
+  };
+
+  // 1. Kirim image buffer
+  const resp = await axios.post(url, imageBuffer, { headers });
+  const opLocation = resp.headers["operation-location"];
+  if (!opLocation) {
+    throw new Error("Gagal mendapatkan operation-location dari Azure OCR.");
+  }
+
+  // 2. Polling dengan interval 1 detik, maksimal 10 kali
+  const POLL_INTERVAL = 1000;
+  const MAX_ATTEMPTS = 10;
+  let resultText: string | null = null;
+
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    const poll = await axios.get(opLocation, {
+      headers: { "Ocp-Apim-Subscription-Key": AZURE_KEY },
+    });
+    const status = poll.data.status;
+    if (status === "succeeded") {
+      // Gabungkan semua baris teks
+      resultText = poll.data.analyzeResult.readResults
+        .flatMap((r: any) => r.lines.map((l: any) => l.text))
+        .join("\n");
+      break;
+    }
+    if (status === "failed") {
+      throw new Error("Azure OCR gagal memproses gambar.");
+    }
+  }
+
+  if (!resultText) {
+    throw new Error("Timeout OCR: Azure tidak merespon dalam batas waktu.");
+  }
+
+  // Simpan ke cache
+  ocrCache.set(hash, resultText);
+  return resultText;
 }
