@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Download,
   Search,
-  Filter,
   Book,
   Trash2,
   Pencil,
@@ -16,7 +15,6 @@ import * as XLSX from "xlsx";
 import Link from "next/link";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,
@@ -41,12 +39,12 @@ interface BookData {
   ket: string;
   isbn: string;
   level: string;
+  count?: number;
 }
 
 export default function MyLibrary() {
   const [books, setBooks] = useState<BookData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const [bookToDelete, setBookToDelete] = useState<BookData | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"card" | "list">("list");
@@ -57,8 +55,37 @@ export default function MyLibrary() {
     const fetchBooks = async () => {
       const res = await fetch("/api/books");
       const data = await res.json();
-      setBooks(data.books);
+
+      const bookMap = new Map<string, BookData & { count: number }>();
+
+      for (const book of data.books) {
+        const key = JSON.stringify({
+          judul: book.judul,
+          pengarang: book.pengarang,
+          edisi: book.edisi,
+          kotaTerbit: book.kotaTerbit,
+          penerbit: book.penerbit,
+          tahunTerbit: book.tahunTerbit,
+          deskripsiFisik: book.deskripsiFisik,
+          sumber: book.sumber,
+          subjek: book.subjek,
+          noPanggil: book.noPanggil,
+          isbn: book.isbn,
+          level: book.level,
+        });
+
+        if (bookMap.has(key)) {
+          const existing = bookMap.get(key)!;
+          existing.count += 1;
+          existing.ket = `${existing.count} eks`;
+        } else {
+          bookMap.set(key, { ...book, count: 1, ket: "1 eks" });
+        }
+      }
+
+      setBooks(Array.from(bookMap.values()));
     };
+
     fetchBooks();
   }, []);
 
@@ -101,16 +128,12 @@ export default function MyLibrary() {
   };
 
   const filteredBooks = books.filter((book) => {
-    const matchesSearch =
-      book.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.pengarang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.subjek.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesCategory =
-      selectedCategory === "all" ||
-      book.subjek.toLowerCase().includes(selectedCategory.toLowerCase());
-
-    return matchesSearch && matchesCategory;
+    const search = searchTerm.toLowerCase();
+    return (
+      book.judul.toLowerCase().includes(search) ||
+      book.pengarang.toLowerCase().includes(search) ||
+      book.subjek.toLowerCase().includes(search)
+    );
   });
 
   const selectedBooks = filteredBooks.filter((b) =>
@@ -118,7 +141,9 @@ export default function MyLibrary() {
   );
 
   const exportToExcel = () => {
-    const exportData = selectedBooks.length > 0 ? selectedBooks : filteredBooks;
+    const exportData = (
+      selectedBooks.length > 0 ? selectedBooks : filteredBooks
+    ).sort((a, b) => a.judul.localeCompare(b.judul));
 
     const excelData = exportData.map((book, index) => ({
       No: index + 1,
@@ -148,47 +173,23 @@ export default function MyLibrary() {
     XLSX.writeFile(workbook, filename);
   };
 
-  const categories = [
-    "all",
-    "Computer Science",
-    "Web Technology",
-    "Database Management",
-    "Artificial Intelligence",
-    "Network Security",
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
+        <div className="flex justify-between items-center flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              My Library
-            </h1>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Manage and export your book catalog
-            </p>
+            <h1 className="text-2xl font-bold">My Library</h1>
+            <p className="text-gray-600 text-sm">Manage your book catalog</p>
           </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <Button
-              variant="outline"
-              className="px-3 py-1.5 text-sm"
-              onClick={() => setViewMode("card")}
-            >
-              <LayoutGrid className="w-4 h-4 mr-1" />
-              Card View
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setViewMode("card")}>
+              <LayoutGrid className="w-4 h-4 mr-1" /> Card
             </Button>
-            <Button
-              variant="outline"
-              className="px-3 py-1.5 text-sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="w-4 h-4 mr-1" />
-              List View
+            <Button variant="outline" onClick={() => setViewMode("list")}>
+              <List className="w-4 h-4 mr-1" /> List
             </Button>
             <Link href="/">
-              <Button className="px-3 py-1.5 text-sm">
+              <Button>
                 <Book className="w-4 h-4 mr-2" />
                 Add Book
               </Button>
@@ -196,55 +197,19 @@ export default function MyLibrary() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Books" value={books.length} color="blue" />
-          <StatCard
-            label="Unique Subjects"
-            value={new Set(books.map((b) => b.subjek)).size}
-            color="teal"
-          />
-          <StatCard
-            label="Years"
-            value={new Set(books.map((b) => b.tahunTerbit)).size}
-            color="purple"
-          />
-          <StatCard
-            label="Sources"
-            value={new Set(books.map((b) => b.sumber)).size}
-            color="rose"
-          />
-        </div>
-
-        {/* Search & Filter */}
-        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by title, author, or subject..."
+              placeholder="Search title, author, or subject..."
               className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {/* <div className="relative w-full sm:w-auto">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <select
-              className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat === "all" ? "All Categories" : cat}
-                </option>
-              ))}
-            </select>
-          </div> */}
         </div>
 
-        {/* Export & Select All */}
         <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <input
@@ -261,11 +226,10 @@ export default function MyLibrary() {
           </div>
           <Button onClick={exportToExcel} disabled={filteredBooks.length === 0}>
             <Download className="w-4 h-4 mr-2" />
-            Export Excel ({selectedBooks.length || filteredBooks.length})
+            Export Excel
           </Button>
         </div>
 
-        {/* Book List */}
         {viewMode === "card" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBooks.map((book) => (
@@ -297,6 +261,8 @@ export default function MyLibrary() {
                   <th className="p-3 text-left">Author</th>
                   <th className="p-3 text-left">Publisher</th>
                   <th className="p-3 text-left">Year</th>
+                  <th className="p-3 text-left">Edisi</th>
+                  <th className="p-3 text-left">Ket</th>
                   <th className="p-3 text-left">Actions</th>
                 </tr>
               </thead>
@@ -316,7 +282,9 @@ export default function MyLibrary() {
                     <td className="p-3">{book.pengarang}</td>
                     <td className="p-3">{book.penerbit}</td>
                     <td className="p-3">{book.tahunTerbit}</td>
-                    <td className="p-3 flex flex-wrap gap-2">
+                    <td className="p-3">{book.edisi}</td>
+                    <td className="p-3">{book.ket}</td>
+                    <td className="p-3 flex gap-2">
                       <Link href={`/edit-book/${book._id}`}>
                         <Button size="sm" variant="outline">
                           <Pencil className="w-4 h-4" />
@@ -337,7 +305,6 @@ export default function MyLibrary() {
           </div>
         )}
 
-        {/* Delete Confirmation Dialog */}
         {bookToDelete && (
           <Dialog
             open={!!bookToDelete}
@@ -350,7 +317,7 @@ export default function MyLibrary() {
                   <h4>Confirm Deletion</h4>
                 </div>
                 <p>
-                  Are you sure to delete book:{" "}
+                  Are you sure you want to delete:{" "}
                   <strong>{bookToDelete.judul}</strong>?
                 </p>
               </DialogHeader>
@@ -366,23 +333,6 @@ export default function MyLibrary() {
           </Dialog>
         )}
       </div>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="bg-white shadow-md rounded-xl p-6 text-center">
-      <p className="text-sm text-gray-500">{label}</p>
-      <h3 className={`text-2xl font-bold text-${color}-600`}>{value}</h3>
     </div>
   );
 }
@@ -426,7 +376,7 @@ function BookCard({
         <div className="flex items-start justify-between">
           <h3 className="text-sm font-bold">{book.judul}</h3>
           <span className="text-xs bg-blue-100 text-blue-700 px-2 rounded-full">
-            #{book.no}
+            {book.ket}
           </span>
         </div>
         <p className="text-xs text-gray-600">{book.pengarang}</p>
