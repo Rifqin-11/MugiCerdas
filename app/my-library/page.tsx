@@ -9,6 +9,8 @@ import {
   Trash2,
   Pencil,
   AlertCircle,
+  List,
+  LayoutGrid,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Link from "next/link";
@@ -45,6 +47,9 @@ export default function MyLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [bookToDelete, setBookToDelete] = useState<BookData | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,17 +71,32 @@ export default function MyLibrary() {
 
       setBooks((prev) => prev.filter((b) => b._id !== bookToDelete._id));
       toast({
-        title: "Buku berhasil dihapus",
-        description: `"${bookToDelete.judul}" telah dihapus dari perpustakaan.`,
+        title: "Book deleted successfully",
+        description: `"${bookToDelete.judul}" has been removed.`,
       });
       setBookToDelete(null);
     } catch (error) {
       toast({
-        title: "Gagal menghapus",
-        description: "Terjadi kesalahan saat menghapus buku.",
+        title: "Failed to delete book",
+        description: "An error occurred while deleting the book.",
         variant: "destructive",
       });
     }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = filteredBooks.map((book) => book._id);
+      setSelectedIds(allIds);
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectBook = (id: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((item) => item !== id)
+    );
   };
 
   const filteredBooks = books.filter((book) => {
@@ -92,9 +112,15 @@ export default function MyLibrary() {
     return matchesSearch && matchesCategory;
   });
 
+  const selectedBooks = filteredBooks.filter((b) =>
+    selectedIds.includes(b._id)
+  );
+
   const exportToExcel = () => {
-    const excelData = filteredBooks.map((book) => ({
-      No: book.no,
+    const exportData = selectedBooks.length > 0 ? selectedBooks : filteredBooks;
+
+    const excelData = exportData.map((book, index) => ({
+      No: index + 1,
       "Tanggal Input": book.tanggalInput,
       Pengarang: book.pengarang,
       Judul: book.judul,
@@ -110,16 +136,16 @@ export default function MyLibrary() {
       ISBN: book.isbn,
     }));
 
+
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Katalog Buku");
 
-    const filename = `katalog-buku-${
+    const filename = `catalog-export-${
       new Date().toISOString().split("T")[0]
     }.xlsx`;
     XLSX.writeFile(workbook, filename);
   };
-
 
   const categories = [
     "all",
@@ -130,202 +156,286 @@ export default function MyLibrary() {
     "Network Security",
   ];
 
-  // Statistik
-  const totalBooks = books.length;
-  const totalSubjects = new Set(books.map((b) => b.subjek)).size;
-  const totalYears = new Set(books.map((b) => b.tahunTerbit)).size;
-  const totalSources = new Set(books.map((b) => b.sumber)).size;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
-              My Library
-            </h1>
-            <p className="text-lg text-gray-600 mt-2">
-              Manage and export your book catalog
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">My Library</h1>
+            <p className="text-gray-600">Manage and export your book catalog</p>
           </div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-          >
-            <Book className="w-4 h-4" />
-            Add New Book
-          </Link>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setViewMode("card")}>
+              <LayoutGrid className="w-4 h-4 mr-1" />
+              Card View
+            </Button>
+            <Button variant="outline" onClick={() => setViewMode("list")}>
+              <List className="w-4 h-4 mr-1" />
+              List View
+            </Button>
+            <Link href="/">
+              <Button>
+                <Book className="w-4 h-4 mr-2" />
+                Add Book
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        {/* Cards Statistik */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white shadow-md rounded-xl p-6 text-center">
-            <p className="text-sm text-gray-500">Total Buku</p>
-            <h3 className="text-2xl font-bold text-blue-600">{totalBooks}</h3>
-          </div>
-          <div className="bg-white shadow-md rounded-xl p-6 text-center">
-            <p className="text-sm text-gray-500">Subjek Unik</p>
-            <h3 className="text-2xl font-bold text-teal-600">
-              {totalSubjects}
-            </h3>
-          </div>
-          <div className="bg-white shadow-md rounded-xl p-6 text-center">
-            <p className="text-sm text-gray-500">Tahun Terbit</p>
-            <h3 className="text-2xl font-bold text-purple-600">{totalYears}</h3>
-          </div>
-          <div className="bg-white shadow-md rounded-xl p-6 text-center">
-            <p className="text-sm text-gray-500">Sumber Buku</p>
-            <h3 className="text-2xl font-bold text-rose-600">{totalSources}</h3>
-          </div>
+          <StatCard label="Total Books" value={books.length} color="blue" />
+          <StatCard
+            label="Unique Subjects"
+            value={new Set(books.map((b) => b.subjek)).size}
+            color="teal"
+          />
+          <StatCard
+            label="Years"
+            value={new Set(books.map((b) => b.tahunTerbit)).size}
+            color="purple"
+          />
+          <StatCard
+            label="Sources"
+            value={new Set(books.map((b) => b.sumber)).size}
+            color="rose"
+          />
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search by title, author, or subject..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row gap-4">
+          <div className="relative w-full md:flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by title, author, or subject..."
+              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <select
+              className="pl-10 pr-4 py-2 border rounded-lg"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat === "all" ? "All Categories" : cat}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Export & Select All */}
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row md:items-center justify-between">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={
+                selectedIds.length === filteredBooks.length &&
+                filteredBooks.length > 0
+              }
+              onChange={(e) => handleSelectAll(e.target.checked)}
+            />
+            <label className="text-gray-700">
+              Select all ({filteredBooks.length})
+            </label>
+          </div>
+          <Button onClick={exportToExcel} disabled={filteredBooks.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel ({selectedBooks.length || filteredBooks.length})
+          </Button>
+        </div>
+
+        {/* Book List */}
+        {viewMode === "card" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredBooks.map((book) => (
+              <BookCard
+                key={book._id}
+                book={book}
+                selected={selectedIds.includes(book._id)}
+                onSelect={handleSelectBook}
+                onDelete={setBookToDelete}
               />
-            </div>
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === "all" ? "All Categories" : category}
-                  </option>
-                ))}
-              </select>
-            </div>
+            ))}
           </div>
-        </div>
-
-        {/* Export */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">
-                Export Catalog
-              </h2>
-              <p className="text-gray-600 mt-1">
-                Download your complete book catalog as an Excel file
-              </p>
-            </div>
-            <button
-              onClick={exportToExcel}
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              <Download className="w-5 h-5" />
-              Export to Excel ({filteredBooks.length} books)
-            </button>
-          </div>
-        </div>
-
-        {/* Book Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredBooks.map((book) => (
-            <div
-              key={book._id}
-              className="bg-white rounded-lg shadow border p-4"
-            >
-              <div className="space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">
-                    {book.judul}
-                  </h3>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    #{book.no}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 truncate">
-                  {book.pengarang}
-                </p>
-                <p className="text-xs text-gray-600 truncate">
-                  {book.penerbit} ({book.tahunTerbit})
-                </p>
-                <p className="text-xs mt-1 bg-gray-100 px-2 py-1 rounded inline-block text-gray-700">
-                  {book.subjek}
-                </p>
-
-                <div className="flex justify-end gap-2 pt-3">
-                  <Link href={`/edit-book/${book._id}`}>
-                    <Button
-                      variant="outline"
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      <Pencil className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                  </Link>
-
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        onClick={() => setBookToDelete(book)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Delete
+        ) : (
+          <table className="w-full bg-white rounded-xl shadow overflow-hidden">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedIds.length === filteredBooks.length &&
+                      filteredBooks.length > 0
+                    }
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                </th>
+                <th className="p-3 text-left">Title</th>
+                <th className="p-3 text-left">Author</th>
+                <th className="p-3 text-left">Publisher</th>
+                <th className="p-3 text-left">Year</th>
+                <th className="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBooks.map((book) => (
+                <tr key={book._id} className="border-b hover:bg-gray-50">
+                  <td className="p-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(book._id)}
+                      onChange={(e) =>
+                        handleSelectBook(book._id, e.target.checked)
+                      }
+                    />
+                  </td>
+                  <td className="p-3">{book.judul}</td>
+                  <td className="p-3">{book.pengarang}</td>
+                  <td className="p-3">{book.penerbit}</td>
+                  <td className="p-3">{book.tahunTerbit}</td>
+                  <td className="p-3 flex gap-2">
+                    <Link href={`/edit-book/${book._id}`}>
+                      <Button size="sm" variant="outline">
+                        <Pencil className="w-4 h-4" />
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="text-red-500 w-5 h-5" />
-                          <h4 className="font-semibold text-lg">
-                            Confirm Book Deletion
-                          </h4>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-2">
-                          Are you sure you want to delete the book{" "}
-                          <span className="font-medium text-red-600">
-                            &quot;{bookToDelete?.judul}&quot;
-                          </span>
-                          ?
-                        </p>
-                      </DialogHeader>
-                      <DialogFooter className="flex justify-end gap-2 mt-4">
-                        <Button
-                          variant="outline"
-                          onClick={() => setBookToDelete(null)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete}>
-                          Delete
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {filteredBooks.length === 0 && (
-          <div className="text-center py-12">
-            <Book className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Tidak ada buku ditemukan
-            </h3>
-            <p className="text-gray-600">
-              Coba ubah kata kunci pencarian atau filter kategori.
-            </p>
-          </div>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setBookToDelete(book)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
 
-        <div className="text-center text-gray-500 text-sm pt-10">
-          <p>&copy; 2025 Mugi Cerdas. Smart cataloging for modern libraries.</p>
+        {/* Delete Confirmation Dialog */}
+        {bookToDelete && (
+          <Dialog
+            open={!!bookToDelete}
+            onOpenChange={() => setBookToDelete(null)}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="text-red-500" />
+                  <h4>Confirm Deletion</h4>
+                </div>
+                <p>
+                  Are you sure to delete book:{" "}
+                  <strong>{bookToDelete.judul}</strong>?
+                </p>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setBookToDelete(null)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div className="bg-white shadow-md rounded-xl p-6 text-center">
+      <p className="text-sm text-gray-500">{label}</p>
+      <h3 className={`text-2xl font-bold text-${color}-600`}>{value}</h3>
+    </div>
+  );
+}
+
+function BookCard({
+  book,
+  selected,
+  onSelect,
+  onDelete,
+}: {
+  book: BookData;
+  selected: boolean;
+  onSelect: (id: string, checked: boolean) => void;
+  onDelete: (book: BookData) => void;
+}) {
+  return (
+    <div className="relative bg-white rounded-lg shadow border p-4 space-y-2 hover:ring-2 hover:ring-blue-300 transition-all duration-300">
+      {/* Modern checkbox */}
+      <label className="absolute top-3 left-3 inline-flex items-center cursor-pointer z-10">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={(e) => onSelect(book._id, e.target.checked)}
+          className="peer sr-only"
+        />
+        <div className="h-5 w-5 rounded border-2 border-gray-300 bg-white peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center transition-colors duration-200">
+          <svg
+            className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      </label>
+
+      <div className="pl-8">
+        <div className="flex items-start justify-between">
+          <h3 className="text-sm font-bold">{book.judul}</h3>
+          <span className="text-xs bg-blue-100 text-blue-700 px-2 rounded-full">
+            #{book.no}
+          </span>
+        </div>
+        <p className="text-xs text-gray-600">{book.pengarang}</p>
+        <p className="text-xs text-gray-600">
+          {book.penerbit} ({book.tahunTerbit})
+        </p>
+        <p className="text-xs text-gray-700 bg-gray-100 inline-block px-2 rounded">
+          {book.subjek}
+        </p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Link href={`/edit-book/${book._id}`}>
+            <Button size="sm" variant="outline">
+              <Pencil className="w-4 h-4" />
+            </Button>
+          </Link>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => onDelete(book)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>

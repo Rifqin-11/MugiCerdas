@@ -68,58 +68,45 @@ useEffect(() => {
     }));
   };
 
-  const handleSave = () => {
-    // Get existing books from localStorage
-    const existingBooks = JSON.parse(localStorage.getItem('libraryBooks') || '[]');
+const handleSave = async () => {
+  const extracted = sessionStorage.getItem("extractedBookData");
+  const parsed = extracted ? JSON.parse(extracted) : null;
 
-    // Check if book with same data already exists
-    const duplicateIndex = existingBooks.findIndex((book: any) =>
-      book.pengarang === bookData.pengarang &&
-      book.judul === bookData.judul &&
-      book.edisi === bookData.edisi &&
-      book.penerbit === bookData.penerbit &&
-      book.tahunTerbit === bookData.tahunTerbit
-    );
+  const bookId = parsed?._id;
 
-    if (duplicateIndex !== -1) {
-      // Update existing book's exemplar count
-      const currentKet = existingBooks[duplicateIndex].ket;
-      const currentCount = parseInt(currentKet.split(' ')[0]) || 1;
-      existingBooks[duplicateIndex].ket = `${currentCount + 1} eks`;
+  try {
+    const res = await fetch(bookId ? `/api/books/${bookId}` : "/api/books", {
+      method: bookId ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...bookData,
+      }),
+    });
 
-      // Save updated books
-      localStorage.setItem('libraryBooks', JSON.stringify(existingBooks));
+    if (!res.ok) throw new Error("Failed to save data");
 
-      toast({
-        title: "Book updated successfully!",
-        description: `Exemplar count updated to ${currentCount + 1} for "${bookData.judul}".`,
-      });
-    } else {
-      // Create new book entry with current date and auto-increment ID
-      const newBook = {
-        no: existingBooks.length + 1,
-        tanggalInput: new Date().toISOString().split('T')[0],
-        ...bookData
-      };
+    toast({
+      title: "Book saved successfully!",
+      description: `"${bookData.judul}" has been ${
+        bookId ? "updated" : "added"
+      } to your library.`,
+    });
 
-      // Add new book to the list
-      const updatedBooks = [...existingBooks, newBook];
+    sessionStorage.removeItem("uploadedBookImage");
+    sessionStorage.removeItem("extractedBookData");
+    router.push("/my-library");
+  } catch (err) {
+    console.error(err);
+    toast({
+      title: "Error saving book",
+      description: "Failed to save book to database.",
+      variant: "destructive",
+    });
+  }
+};
 
-      // Save to localStorage
-      localStorage.setItem('libraryBooks', JSON.stringify(updatedBooks));
-
-      toast({
-        title: "Book saved successfully!",
-        description: `"${bookData.judul}" has been added to your library.`,
-      });
-    }
-
-    // Clear the uploaded image from sessionStorage
-    sessionStorage.removeItem('uploadedBookImage');
-
-    // Navigate to My Library
-    router.push('/my-library');
-  };
 
   const handleCancel = () => {
     // Show cancel toast
