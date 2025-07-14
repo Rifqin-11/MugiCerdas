@@ -2,17 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Warna background default */
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --background-start-rgb: 255, 223, 247; /* pink pastel (#ffddf7) */
+  --background-mid-rgb: 255, 249, 219;   /* kuning muda (#fff9db) */
+  --background-end-rgb: 204, 237, 255;   /* biru pastel (#ccedff) */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background-start-rgb: 55, 48, 163;
+    --background-end-rgb: 17, 24, 39;
   }
 }
 
@@ -44,6 +46,7 @@
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -70,13 +73,25 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: linear-gradient(
+      135deg,
+      rgb(var(--background-start-rgb)) 0%,
+      rgb(var(--background-mid-rgb)) 50%,
+      rgb(var(--background-end-rgb)) 100%
+    );
+  }
+}
+
+@layer base {
+  /* Class opsional */
+  .ai-gradient-bg {
+    @apply bg-gradient-to-br from-[#ffddf7] via-[#fff9db] to-[#ccedff];
   }
 }

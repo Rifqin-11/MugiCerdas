@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload, Eye, Save, FileImage, Loader2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   const router = useRouter();
@@ -93,7 +94,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-12">
         {/* Header */}
         <div className="text-center space-y-4">
@@ -143,7 +144,7 @@ export default function Home() {
                   <p className="text-green-600 font-medium">File selected:</p>
                   {previewUrl && (
                     <div className="flex justify-center mb-3">
-                      <img
+                      <Image
                         src={previewUrl}
                         alt="Preview"
                         className="max-w-32 max-h-32 object-cover rounded-lg border border-gray-200"
