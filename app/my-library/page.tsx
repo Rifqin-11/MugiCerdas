@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Download,
   Search,
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   List,
   LayoutGrid,
+  ArrowUpDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Link from "next/link";
@@ -40,7 +41,10 @@ interface BookData {
   ket: string;
   isbn: string;
   level: string;
+  count?: number;
 }
+
+type SortableKeys = "judul" | "pengarang" | "count";
 
 export default function MyLibrary() {
   const [books, setBooks] = useState<BookData[]>([]);
@@ -49,6 +53,11 @@ export default function MyLibrary() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"card" | "list">("list");
   const { toast } = useToast();
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortableKeys;
+    direction: "asc" | "desc" | "none";
+  }>({ key: "judul", direction: "none" });
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -61,9 +70,9 @@ export default function MyLibrary() {
 
   const groupedBooks = Object.values(
     books.reduce((acc, book) => {
-       const key = `${book.judul?.trim().toLowerCase()}|${book.pengarang
-         ?.trim()
-         .toLowerCase()}|${book.isbn?.trim() || ""}`;
+      const key = `${book.judul?.trim().toLowerCase()}|${book.pengarang
+        ?.trim()
+        .toLowerCase()}|${book.isbn?.trim() || ""}`;
       if (!acc[key]) {
         acc[key] = { ...book, count: 1, ket: "1 eks" };
       } else {
@@ -81,6 +90,46 @@ export default function MyLibrary() {
       book.subjek.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  const sortedBooks = useMemo(() => {
+    let sortableItems = [...filteredBooks];
+    if (sortConfig.direction !== "none") {
+      sortableItems.sort((a, b) => {
+        const valA = a[sortConfig.key];
+        const valB = b[sortConfig.key];
+
+        if (sortConfig.key === "count") {
+          const numA = valA ?? 0;
+          const numB = valB ?? 0;
+          return sortConfig.direction === "asc" ? numA - numB : numB - numA;
+        }
+
+        const strValA = String(valA).toLowerCase() || "";
+        const strValB = String(valB).toLowerCase() || "";
+
+        if (strValA < strValB) {
+          return sortConfig.direction === "asc" ? -1 : 1;
+        }
+        if (strValA > strValB) {
+          return sortConfig.direction === "asc" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredBooks, sortConfig]);
+
+  const handleSort = (key: SortableKeys) => {
+    setSortConfig((current) => {
+      const isCurrentKey = current.key === key;
+      if (isCurrentKey) {
+        if (current.direction === "none") return { key, direction: "asc" };
+        if (current.direction === "asc") return { key, direction: "desc" };
+        return { ...current, direction: "none" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
 
   const handleDelete = async () => {
     if (!bookToDelete) return;
@@ -106,7 +155,7 @@ export default function MyLibrary() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = filteredBooks.map((book) => book._id);
+      const allIds = sortedBooks.map((book) => book._id);
       setSelectedIds(allIds);
     } else {
       setSelectedIds([]);
@@ -124,7 +173,7 @@ export default function MyLibrary() {
   );
 
   const exportToExcel = () => {
-    const exportData = selectedBooks.length > 0 ? selectedBooks : filteredBooks;
+    const exportData = selectedBooks.length > 0 ? selectedBooks : sortedBooks;
 
     const excelData = exportData.map((book, index) => ({
       No: index + 1,
@@ -173,7 +222,6 @@ export default function MyLibrary() {
       skipHeader: true,
     });
 
-    // Auto-fit columns
     const maxWidths = Object.keys(excelData[0]).map((key) => {
       const maxLen = Math.max(
         key.length,
@@ -233,7 +281,7 @@ export default function MyLibrary() {
           />
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4 items-center flex-wrap">
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
@@ -244,24 +292,79 @@ export default function MyLibrary() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-500">Sort by:</span>
+            {/* START: Modified buttons for active state */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSort("judul")}
+              className={`flex items-center gap-1 transition-colors ${
+                sortConfig.key === "judul" && sortConfig.direction !== "none"
+                  ? "bg-black text-white hover:bg-gray-800 hover:text-white"
+                  : ""
+              }`}
+            >
+              Title
+              {sortConfig.key === "judul" &&
+                sortConfig.direction !== "none" && (
+                  <ArrowUpDown className="w-4 h-4" />
+                )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSort("pengarang")}
+              className={`flex items-center gap-1 transition-colors ${
+                sortConfig.key === "pengarang" &&
+                sortConfig.direction !== "none"
+                  ? "bg-black text-white hover:bg-gray-800 hover:text-white"
+                  : ""
+              }`}
+            >
+              Author
+              {sortConfig.key === "pengarang" &&
+                sortConfig.direction !== "none" && (
+                  <ArrowUpDown className="w-4 h-4" />
+                )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSort("count")}
+              className={`flex items-center gap-1 transition-colors ${
+                sortConfig.key === "count" && sortConfig.direction !== "none"
+                  ? "bg-black text-white hover:bg-gray-800 hover:text-white"
+                  : ""
+              }`}
+            >
+              Ket
+              {sortConfig.key === "count" &&
+                sortConfig.direction !== "none" && (
+                  <ArrowUpDown className="w-4 h-4" />
+                )}
+            </Button>
+            {/* END: Modified buttons for active state */}
+          </div>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Checkbox
               checked={
-                selectedIds.length === filteredBooks.length &&
-                filteredBooks.length > 0
+                selectedIds.length === sortedBooks.length &&
+                sortedBooks.length > 0
               }
               onCheckedChange={(checked) => handleSelectAll(!!checked)}
             />
             <label className="text-gray-700 text-sm">
-              Select all ({filteredBooks.length})
+              Select all ({sortedBooks.length})
             </label>
           </div>
-          <Button onClick={exportToExcel} disabled={filteredBooks.length === 0}>
+          <Button onClick={exportToExcel} disabled={sortedBooks.length === 0}>
             <Download className="w-4 h-4 mr-2" />
-            Export Excel ({selectedBooks.length || filteredBooks.length})
+            Export Excel ({selectedBooks.length || sortedBooks.length})
           </Button>
         </div>
 
@@ -272,8 +375,8 @@ export default function MyLibrary() {
                 <th className="p-3 text-left">
                   <Checkbox
                     checked={
-                      selectedIds.length === filteredBooks.length &&
-                      filteredBooks.length > 0
+                      selectedIds.length === sortedBooks.length &&
+                      sortedBooks.length > 0
                     }
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
                   />
@@ -287,7 +390,7 @@ export default function MyLibrary() {
               </tr>
             </thead>
             <tbody>
-              {filteredBooks.map((book) => (
+              {sortedBooks.map((book) => (
                 <tr key={book._id} className="border-b hover:bg-gray-50">
                   <td className="p-3">
                     <Checkbox
