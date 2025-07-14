@@ -26,11 +26,15 @@ Ubah teks berikut menjadi objek JSON dengan struktur:
   "isbn": ""                // Nomor ISBN
 }
 
+Catatan penting:
+- Jika nama pengarang ditulis dalam bentuk "nama belakang, nama depan", JANGAN ubah urutannya.
+- Tetap simpan seperti itu: "Doe, John" bukan "John Doe".
+
 Teks OCR:
 """
 ${rawText}
 """
-  `;
+`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();

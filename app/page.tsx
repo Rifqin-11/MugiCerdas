@@ -148,6 +148,8 @@ export default function Home() {
                         src={previewUrl}
                         alt="Preview"
                         className="max-w-32 max-h-32 object-cover rounded-lg border border-gray-200"
+                        width={128}
+                        height={128}
                       />
                     </div>
                   )}
