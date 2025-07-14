@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, ArrowLeft, Check, X } from "lucide-react";
+import { Save, ArrowLeft, Check, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -20,12 +20,14 @@ interface BookData {
   noPanggil: string;
   ket: string;
   isbn: string;
+  level: string;
 }
 
 export default function BookEditor() {
   const router = useRouter();
   const { toast } = useToast();
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [bookData, setBookData] = useState<BookData>({
     pengarang: "John Doe",
     judul: "Introduction to Programming",
@@ -39,6 +41,7 @@ export default function BookEditor() {
     noPanggil: "004.1 DOE i",
     ket: "1 eks",
     isbn: "978-1-234-56789-0",
+    level: "",
   });
 
   useEffect(() => {
@@ -65,6 +68,7 @@ export default function BookEditor() {
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     const extracted = sessionStorage.getItem("extractedBookData");
     const parsed = extracted ? JSON.parse(extracted) : null;
     const bookId = parsed?._id;
@@ -75,9 +79,7 @@ export default function BookEditor() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...bookData,
-        }),
+        body: JSON.stringify(bookData),
       });
 
       if (!res.ok) throw new Error("Failed to save data");
@@ -99,8 +101,11 @@ export default function BookEditor() {
         description: "Failed to save book to database.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
+
 
   const handleCancel = () => {
     toast({
@@ -204,17 +209,56 @@ export default function BookEditor() {
                   <option value="Pertukaran">Exchange</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Level
+                </label>
+                <select
+                  value={bookData.level}
+                  onChange={(e) => handleInputChange("level", e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="" disabled>
+                    Pilih Level
+                  </option>
+                  <option value="0">Tidak Ada Level</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="A">A</option>
+                  <option value="B1">B1</option>
+                  <option value="B2">B2</option>
+                  <option value="B3">B3</option>
+                  <option value="C">C</option>
+                </select>
+              </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col md:flex-row gap-4 mt-8">
               <button
                 onClick={handleSave}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+                disabled={isSaving}
+                className={`flex-1 inline-flex items-center justify-center gap-2 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg ${
+                  isSaving
+                    ? "bg-green-300 cursor-not-allowed"
+                    : "bg-green-500 hover:bg-green-600"
+                }`}
               >
-                <Check className="w-5 h-5" />
-                Save Book
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Save Book
+                  </>
+                )}
               </button>
+
               <button
                 onClick={handleCancel}
                 className="flex-1 inline-flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"

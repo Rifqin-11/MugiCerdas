@@ -23,7 +23,8 @@ Ubah teks berikut menjadi objek JSON dengan struktur:
   "subjek": "",             // Ambil hanya poin 1 dari bagian subjek
   "noPanggil": "",          // Gabungkan semua bagian jadi satu baris, contoh: "398.209 598 GRI"
   "ket": "",                // Tuliskan "1 eks"
-  "isbn": ""                // Nomor ISBN
+  "isbn": "",               // Nomor ISBN
+  "level": ""
 }
 
 Catatan penting:

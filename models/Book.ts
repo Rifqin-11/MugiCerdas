@@ -15,6 +15,7 @@ const BookSchema = new mongoose.Schema(
     noPanggil: String,
     ket: String,
     isbn: String,
+    level: String,
   },
   { timestamps: true }
 );

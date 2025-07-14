@@ -30,6 +30,7 @@ export const POST = async (req: NextRequest) => {
       edisi: rawData.edisi || "1",
       sumber: rawData.sumber || "hibah",
       ket: "1 eks",
+      level: rawData.level || "", // 👈 Tambahkan ini
     };
 
     await connectToDB();

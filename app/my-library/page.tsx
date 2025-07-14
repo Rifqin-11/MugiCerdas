@@ -40,6 +40,7 @@ interface BookData {
   noPanggil: string;
   ket: string;
   isbn: string;
+  level: string;
 }
 
 export default function MyLibrary() {
@@ -134,6 +135,7 @@ export default function MyLibrary() {
       "No. Panggil": book.noPanggil,
       Ket: book.ket,
       ISBN: book.isbn,
+      Level: book.level,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -226,7 +228,7 @@ export default function MyLibrary() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="relative w-full sm:w-auto">
+          {/* <div className="relative w-full sm:w-auto">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <select
               className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm"
@@ -239,7 +241,7 @@ export default function MyLibrary() {
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
         </div>
 
         {/* Export & Select All */}
