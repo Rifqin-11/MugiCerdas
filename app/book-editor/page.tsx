@@ -68,6 +68,15 @@ export default function BookEditor() {
   };
 
   const handleSave = async () => {
+    if (!bookData.level) {
+      toast({
+        title: "Level wajib diisi",
+        description: "Silakan pilih level sebelum menyimpan buku.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     const extracted = sessionStorage.getItem("extractedBookData");
     const parsed = extracted ? JSON.parse(extracted) : null;
@@ -105,6 +114,7 @@ export default function BookEditor() {
       setIsSaving(false);
     }
   };
+
 
 
   const handleCancel = () => {
