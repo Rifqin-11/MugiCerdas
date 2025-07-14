@@ -136,7 +136,6 @@ export default function MyLibrary() {
       ISBN: book.isbn,
     }));
 
-
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Katalog Buku");
@@ -160,22 +159,34 @@ export default function MyLibrary() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Library</h1>
-            <p className="text-gray-600">Manage and export your book catalog</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              My Library
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Manage and export your book catalog
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setViewMode("card")}>
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              variant="outline"
+              className="px-3 py-1.5 text-sm"
+              onClick={() => setViewMode("card")}
+            >
               <LayoutGrid className="w-4 h-4 mr-1" />
               Card View
             </Button>
-            <Button variant="outline" onClick={() => setViewMode("list")}>
+            <Button
+              variant="outline"
+              className="px-3 py-1.5 text-sm"
+              onClick={() => setViewMode("list")}
+            >
               <List className="w-4 h-4 mr-1" />
               List View
             </Button>
             <Link href="/">
-              <Button>
+              <Button className="px-3 py-1.5 text-sm">
                 <Book className="w-4 h-4 mr-2" />
                 Add Book
               </Button>
@@ -204,21 +215,21 @@ export default function MyLibrary() {
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row gap-4">
-          <div className="relative w-full md:flex-1">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search by title, author, or subject..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <select
-              className="pl-10 pr-4 py-2 border rounded-lg"
+              className="w-full sm:w-auto pl-10 pr-4 py-2 border rounded-lg text-sm"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
@@ -232,7 +243,7 @@ export default function MyLibrary() {
         </div>
 
         {/* Export & Select All */}
-        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row md:items-center justify-between">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -242,7 +253,7 @@ export default function MyLibrary() {
               }
               onChange={(e) => handleSelectAll(e.target.checked)}
             />
-            <label className="text-gray-700">
+            <label className="text-gray-700 text-sm">
               Select all ({filteredBooks.length})
             </label>
           </div>
@@ -254,7 +265,7 @@ export default function MyLibrary() {
 
         {/* Book List */}
         {viewMode === "card" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBooks.map((book) => (
               <BookCard
                 key={book._id}
@@ -266,60 +277,62 @@ export default function MyLibrary() {
             ))}
           </div>
         ) : (
-          <table className="w-full bg-white rounded-xl shadow overflow-hidden">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.length === filteredBooks.length &&
-                      filteredBooks.length > 0
-                    }
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                </th>
-                <th className="p-3 text-left">Title</th>
-                <th className="p-3 text-left">Author</th>
-                <th className="p-3 text-left">Publisher</th>
-                <th className="p-3 text-left">Year</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBooks.map((book) => (
-                <tr key={book._id} className="border-b hover:bg-gray-50">
-                  <td className="p-3">
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded-xl shadow overflow-hidden">
+              <thead className="bg-gray-100 text-sm">
+                <tr>
+                  <th className="p-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedIds.includes(book._id)}
-                      onChange={(e) =>
-                        handleSelectBook(book._id, e.target.checked)
+                      checked={
+                        selectedIds.length === filteredBooks.length &&
+                        filteredBooks.length > 0
                       }
+                      onChange={(e) => handleSelectAll(e.target.checked)}
                     />
-                  </td>
-                  <td className="p-3">{book.judul}</td>
-                  <td className="p-3">{book.pengarang}</td>
-                  <td className="p-3">{book.penerbit}</td>
-                  <td className="p-3">{book.tahunTerbit}</td>
-                  <td className="p-3 flex gap-2">
-                    <Link href={`/edit-book/${book._id}`}>
-                      <Button size="sm" variant="outline">
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setBookToDelete(book)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </td>
+                  </th>
+                  <th className="p-3 text-left">Title</th>
+                  <th className="p-3 text-left">Author</th>
+                  <th className="p-3 text-left">Publisher</th>
+                  <th className="p-3 text-left">Year</th>
+                  <th className="p-3 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredBooks.map((book) => (
+                  <tr key={book._id} className="border-b hover:bg-gray-50">
+                    <td className="p-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(book._id)}
+                        onChange={(e) =>
+                          handleSelectBook(book._id, e.target.checked)
+                        }
+                      />
+                    </td>
+                    <td className="p-3">{book.judul}</td>
+                    <td className="p-3">{book.pengarang}</td>
+                    <td className="p-3">{book.penerbit}</td>
+                    <td className="p-3">{book.tahunTerbit}</td>
+                    <td className="p-3 flex flex-wrap gap-2">
+                      <Link href={`/edit-book/${book._id}`}>
+                        <Button size="sm" variant="outline">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setBookToDelete(book)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {/* Delete Confirmation Dialog */}
@@ -385,7 +398,6 @@ function BookCard({
 }) {
   return (
     <div className="relative bg-white rounded-lg shadow border p-4 space-y-2 hover:ring-2 hover:ring-blue-300 transition-all duration-300">
-      {/* Modern checkbox */}
       <label className="absolute top-3 left-3 inline-flex items-center cursor-pointer z-10">
         <input
           type="checkbox"
@@ -422,7 +434,6 @@ function BookCard({
         <p className="text-xs text-gray-700 bg-gray-100 inline-block px-2 rounded">
           {book.subjek}
         </p>
-
         <div className="flex justify-end gap-2 pt-2">
           <Link href={`/edit-book/${book._id}`}>
             <Button size="sm" variant="outline">
