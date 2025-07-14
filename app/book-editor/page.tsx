@@ -5,6 +5,7 @@ import { Save, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 interface BookData {
   pengarang: string;
@@ -155,7 +156,7 @@ const handleSave = async () => {
             <div className="bg-white rounded-xl shadow-md p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Uploaded Image</h2>
               <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <img
+                <Image
                   src={uploadedImage}
                   alt="Uploaded book page"
                   className="w-full h-auto max-h-96 object-contain"
@@ -271,10 +272,9 @@ const handleSave = async () => {
                   onChange={(e) => handleInputChange('sumber', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="Purchase">Purchase</option>
-                  <option value="Donation">Donation</option>
-                  <option value="Exchange">Exchange</option>
-                  <option value="Gift">Gift</option>
+                  <option value="Hibah">Donation</option>
+                  <option value="Pembelian">Purchase</option>
+                  <option value="Pertukaran">Exchange</option>
                 </select>
               </div>
 
