@@ -45,8 +45,27 @@ export default function EditBookPage() {
         if (!res.ok) throw new Error("Failed to fetch book data");
         const data = await res.json();
 
+        const { judul, pengarang } = data;
+
+        // Fetch all books with the same title and author to get total exemplars
+        const allRes = await fetch(`/api/books`);
+        const allData = await allRes.json();
+
+        const matchingBooks = allData.books.filter(
+          (b: BookData) => b.judul === judul && b.pengarang === pengarang
+        );
+
+        const totalExemplars = matchingBooks.length;
+
+        // Set ket as "x eks"
+        const mergedBook: BookData = {
+          ...data,
+          ket: `${totalExemplars} eks`,
+        };
+
         // Remove unwanted fields
-        const { _id, createdAt, updatedAt, __v, ...cleaned } = data;
+        const { _id, createdAt, updatedAt, __v, ...cleaned } = mergedBook;
+
         setBookData(cleaned);
       } catch (err) {
         toast({
@@ -58,6 +77,7 @@ export default function EditBookPage() {
         setIsLoading(false);
       }
     };
+
 
     if (id) fetchBook();
   }, [id]);
@@ -197,6 +217,24 @@ export default function EditBookPage() {
                         <option value="B3">B3</option>
                         <option value="C">C</option>
                       </select>
+                    </div>
+                  );
+                }
+
+                if (key === "ket") {
+                  return (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Jumlah Eksemplar
+                      </label>
+                      <input
+                        type="number"
+                        value={parseInt(value)}
+                        onChange={(e) =>
+                          handleInputChange("ket", `${e.target.value} eks`)
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
                   );
                 }

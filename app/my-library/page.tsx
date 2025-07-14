@@ -39,7 +39,6 @@ interface BookData {
   ket: string;
   isbn: string;
   level: string;
-  count?: number;
 }
 
 export default function MyLibrary() {
@@ -48,46 +47,37 @@ export default function MyLibrary() {
   const [bookToDelete, setBookToDelete] = useState<BookData | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"card" | "list">("list");
-
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchBooks = async () => {
       const res = await fetch("/api/books");
       const data = await res.json();
-
-      const bookMap = new Map<string, BookData & { count: number }>();
-
-      for (const book of data.books) {
-        const key = JSON.stringify({
-          judul: book.judul,
-          pengarang: book.pengarang,
-          edisi: book.edisi,
-          kotaTerbit: book.kotaTerbit,
-          penerbit: book.penerbit,
-          tahunTerbit: book.tahunTerbit,
-          deskripsiFisik: book.deskripsiFisik,
-          sumber: book.sumber,
-          subjek: book.subjek,
-          noPanggil: book.noPanggil,
-          isbn: book.isbn,
-          level: book.level,
-        });
-
-        if (bookMap.has(key)) {
-          const existing = bookMap.get(key)!;
-          existing.count += 1;
-          existing.ket = `${existing.count} eks`;
-        } else {
-          bookMap.set(key, { ...book, count: 1, ket: "1 eks" });
-        }
-      }
-
-      setBooks(Array.from(bookMap.values()));
+      setBooks(data.books);
     };
-
     fetchBooks();
   }, []);
+
+  const groupedBooks = Object.values(
+    books.reduce((acc, book) => {
+      const key = `${book.judul}|${book.pengarang}`;
+      if (!acc[key]) {
+        acc[key] = { ...book, count: 1, ket: "1 eks" };
+      } else {
+        acc[key].count++;
+        acc[key].ket = `${acc[key].count} eks`;
+      }
+      return acc;
+    }, {} as Record<string, BookData & { count: number }>)
+  );
+
+  const filteredBooks = groupedBooks.filter((book) => {
+    const matchesSearch =
+      book.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.pengarang.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.subjek.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
   const handleDelete = async () => {
     if (!bookToDelete) return;
@@ -96,7 +86,6 @@ export default function MyLibrary() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Gagal menghapus");
-
       setBooks((prev) => prev.filter((b) => b._id !== bookToDelete._id));
       toast({
         title: "Book deleted successfully",
@@ -127,47 +116,74 @@ export default function MyLibrary() {
     );
   };
 
-  const filteredBooks = books.filter((book) => {
-    const search = searchTerm.toLowerCase();
-    return (
-      book.judul.toLowerCase().includes(search) ||
-      book.pengarang.toLowerCase().includes(search) ||
-      book.subjek.toLowerCase().includes(search)
-    );
-  });
-
   const selectedBooks = filteredBooks.filter((b) =>
     selectedIds.includes(b._id)
   );
 
   const exportToExcel = () => {
-    const exportData = (
-      selectedBooks.length > 0 ? selectedBooks : filteredBooks
-    ).sort((a, b) => a.judul.localeCompare(b.judul));
+    const exportData = selectedBooks.length > 0 ? selectedBooks : filteredBooks;
 
     const excelData = exportData.map((book, index) => ({
       No: index + 1,
-      "Tanggal Input": book.tanggalInput,
-      Pengarang: book.pengarang,
       Judul: book.judul,
-      Edisi: book.edisi,
-      "Kota Terbit": book.kotaTerbit,
+      Pengarang: book.pengarang,
       Penerbit: book.penerbit,
       "Tahun Terbit": book.tahunTerbit,
+      Edisi: book.edisi,
+      "Kota Terbit": book.kotaTerbit,
+      "Tanggal Input": book.tanggalInput,
       "Deskripsi Fisik": book.deskripsiFisik,
       Sumber: book.sumber,
       Subjek: book.subjek,
       "No. Panggil": book.noPanggil,
-      Ket: book.ket,
       ISBN: book.isbn,
       Level: book.level,
+      Ket: `${book.count} eks`,
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const worksheet = XLSX.utils.json_to_sheet([]);
+    XLSX.utils.sheet_add_aoa(
+      worksheet,
+      [
+        [
+          "No",
+          "Judul",
+          "Pengarang",
+          "Penerbit",
+          "Tahun Terbit",
+          "Edisi",
+          "Kota Terbit",
+          "Tanggal Input",
+          "Deskripsi Fisik",
+          "Sumber",
+          "Subjek",
+          "No. Panggil",
+          "ISBN",
+          "Level",
+          "Ket",
+        ],
+      ],
+      { origin: "A1" }
+    );
+    XLSX.utils.sheet_add_json(worksheet, excelData, {
+      origin: "A2",
+      skipHeader: true,
+    });
+
+    // Auto-fit columns
+    const maxWidths = Object.keys(excelData[0]).map((key) => {
+      const maxLen = Math.max(
+        key.length,
+        ...excelData.map((row) => String(row[key as keyof typeof row]).length)
+      );
+      return { wch: maxLen + 2 };
+    });
+    worksheet["!cols"] = maxWidths;
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Katalog Buku");
 
-    const filename = `catalog-export-${
+    const filename = `katalog-export-${
       new Date().toISOString().split("T")[0]
     }.xlsx`;
     XLSX.writeFile(workbook, filename);
@@ -176,20 +192,34 @@ export default function MyLibrary() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex justify-between items-center flex-wrap gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold">My Library</h1>
-            <p className="text-gray-600 text-sm">Manage your book catalog</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              My Library
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Manage and export your book catalog
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setViewMode("card")}>
-              <LayoutGrid className="w-4 h-4 mr-1" /> Card
+          <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              variant="outline"
+              className="px-3 py-1.5 text-sm"
+              onClick={() => setViewMode("card")}
+            >
+              <LayoutGrid className="w-4 h-4 mr-1" />
+              Card View
             </Button>
-            <Button variant="outline" onClick={() => setViewMode("list")}>
-              <List className="w-4 h-4 mr-1" /> List
+            <Button
+              variant="outline"
+              className="px-3 py-1.5 text-sm"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="w-4 h-4 mr-1" />
+              List View
             </Button>
             <Link href="/">
-              <Button>
+              <Button className="px-3 py-1.5 text-sm">
                 <Book className="w-4 h-4 mr-2" />
                 Add Book
               </Button>
@@ -197,12 +227,31 @@ export default function MyLibrary() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="Total Books" value={books.length} color="blue" />
+          <StatCard
+            label="Unique Subjects"
+            value={new Set(books.map((b) => b.subjek)).size}
+            color="teal"
+          />
+          <StatCard
+            label="Years"
+            value={new Set(books.map((b) => b.tahunTerbit)).size}
+            color="purple"
+          />
+          <StatCard
+            label="Sources"
+            value={new Set(books.map((b) => b.sumber)).size}
+            color="rose"
+          />
+        </div>
+
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row gap-4">
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search title, author, or subject..."
+              placeholder="Search by title, author, or subject..."
               className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -210,7 +259,7 @@ export default function MyLibrary() {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -226,84 +275,73 @@ export default function MyLibrary() {
           </div>
           <Button onClick={exportToExcel} disabled={filteredBooks.length === 0}>
             <Download className="w-4 h-4 mr-2" />
-            Export Excel
+            Export Excel ({selectedBooks.length || filteredBooks.length})
           </Button>
         </div>
 
-        {viewMode === "card" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredBooks.map((book) => (
-              <BookCard
-                key={book._id}
-                book={book}
-                selected={selectedIds.includes(book._id)}
-                onSelect={handleSelectBook}
-                onDelete={setBookToDelete}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white rounded-xl shadow overflow-hidden">
-              <thead className="bg-gray-100 text-sm">
-                <tr>
-                  <th className="p-3 text-left">
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white rounded-xl shadow overflow-hidden">
+            <thead className="bg-gray-100 text-sm">
+              <tr>
+                <th className="p-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedIds.length === filteredBooks.length &&
+                      filteredBooks.length > 0
+                    }
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                </th>
+                <th className="p-3 text-left">Title</th>
+                <th className="p-3 text-left">Author</th>
+                <th className="p-3 text-left">Publisher</th>
+                <th className="p-3 text-left">Year</th>
+                <th className="p-3 text-left">Ket</th>
+                <th className="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBooks.map((book) => (
+                <tr key={book._id} className="border-b hover:bg-gray-50">
+                  <td className="p-3">
                     <input
                       type="checkbox"
-                      checked={
-                        selectedIds.length === filteredBooks.length &&
-                        filteredBooks.length > 0
+                      checked={selectedIds.includes(book._id)}
+                      onChange={(e) =>
+                        handleSelectBook(book._id, e.target.checked)
                       }
-                      onChange={(e) => handleSelectAll(e.target.checked)}
                     />
-                  </th>
-                  <th className="p-3 text-left">Title</th>
-                  <th className="p-3 text-left">Author</th>
-                  <th className="p-3 text-left">Publisher</th>
-                  <th className="p-3 text-left">Year</th>
-                  <th className="p-3 text-left">Edisi</th>
-                  <th className="p-3 text-left">Ket</th>
-                  <th className="p-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBooks.map((book) => (
-                  <tr key={book._id} className="border-b hover:bg-gray-50">
-                    <td className="p-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(book._id)}
-                        onChange={(e) =>
-                          handleSelectBook(book._id, e.target.checked)
-                        }
-                      />
-                    </td>
-                    <td className="p-3">{book.judul}</td>
-                    <td className="p-3">{book.pengarang}</td>
-                    <td className="p-3">{book.penerbit}</td>
-                    <td className="p-3">{book.tahunTerbit}</td>
-                    <td className="p-3">{book.edisi}</td>
-                    <td className="p-3">{book.ket}</td>
-                    <td className="p-3 flex gap-2">
-                      <Link href={`/edit-book/${book._id}`}>
-                        <Button size="sm" variant="outline">
+                  </td>
+                  <td className="p-3">{book.judul}</td>
+                  <td className="p-3">{book.pengarang}</td>
+                  <td className="p-3">{book.penerbit}</td>
+                  <td className="p-3">{book.tahunTerbit}</td>
+                  <td className="p-3">{book.count} eks</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Link href={`/edit-book/${book._id}`} passHref>
+                        <button
+                          className="inline-flex items-center justify-center p-2 rounded-md border border-gray-200 hover:border-blue-500 hover:bg-blue-50 text-blue-600 transition duration-150"
+                          title="Edit Book"
+                        >
                           <Pencil className="w-4 h-4" />
-                        </Button>
+                        </button>
                       </Link>
-                      <Button
-                        size="sm"
-                        variant="destructive"
+                      <button
                         onClick={() => setBookToDelete(book)}
+                        className="inline-flex items-center justify-center p-2 rounded-md border border-gray-200 bg-red-500 hover:border-red-500 hover:bg-red-600 text-white transition duration-150"
+                        title="Delete Book"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {bookToDelete && (
           <Dialog
@@ -317,7 +355,7 @@ export default function MyLibrary() {
                   <h4>Confirm Deletion</h4>
                 </div>
                 <p>
-                  Are you sure you want to delete:{" "}
+                  Are you sure to delete book:{" "}
                   <strong>{bookToDelete.judul}</strong>?
                 </p>
               </DialogHeader>
@@ -337,70 +375,19 @@ export default function MyLibrary() {
   );
 }
 
-function BookCard({
-  book,
-  selected,
-  onSelect,
-  onDelete,
+function StatCard({
+  label,
+  value,
+  color,
 }: {
-  book: BookData;
-  selected: boolean;
-  onSelect: (id: string, checked: boolean) => void;
-  onDelete: (book: BookData) => void;
+  label: string;
+  value: number;
+  color: string;
 }) {
   return (
-    <div className="relative bg-white rounded-lg shadow border p-4 space-y-2 hover:ring-2 hover:ring-blue-300 transition-all duration-300">
-      <label className="absolute top-3 left-3 inline-flex items-center cursor-pointer z-10">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={(e) => onSelect(book._id, e.target.checked)}
-          className="peer sr-only"
-        />
-        <div className="h-5 w-5 rounded border-2 border-gray-300 bg-white peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center transition-colors duration-200">
-          <svg
-            className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-      </label>
-
-      <div className="pl-8">
-        <div className="flex items-start justify-between">
-          <h3 className="text-sm font-bold">{book.judul}</h3>
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 rounded-full">
-            {book.ket}
-          </span>
-        </div>
-        <p className="text-xs text-gray-600">{book.pengarang}</p>
-        <p className="text-xs text-gray-600">
-          {book.penerbit} ({book.tahunTerbit})
-        </p>
-        <p className="text-xs text-gray-700 bg-gray-100 inline-block px-2 rounded">
-          {book.subjek}
-        </p>
-        <div className="flex justify-end gap-2 pt-2">
-          <Link href={`/edit-book/${book._id}`}>
-            <Button size="sm" variant="outline">
-              <Pencil className="w-4 h-4" />
-            </Button>
-          </Link>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => onDelete(book)}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+    <div className="bg-white shadow-md rounded-xl p-6 text-center">
+      <p className="text-sm text-gray-500">{label}</p>
+      <h3 className={`text-2xl font-bold text-${color}-600`}>{value}</h3>
     </div>
   );
 }
