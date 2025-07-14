@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface BookData {
   _id: string;
@@ -202,22 +203,6 @@ export default function MyLibrary() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 justify-end">
-            <Button
-              variant="outline"
-              className="px-3 py-1.5 text-sm"
-              onClick={() => setViewMode("card")}
-            >
-              <LayoutGrid className="w-4 h-4 mr-1" />
-              Card View
-            </Button>
-            <Button
-              variant="outline"
-              className="px-3 py-1.5 text-sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="w-4 h-4 mr-1" />
-              List View
-            </Button>
             <Link href="/">
               <Button className="px-3 py-1.5 text-sm">
                 <Book className="w-4 h-4 mr-2" />
@@ -261,13 +246,12 @@ export default function MyLibrary() {
 
         <div className="bg-white p-4 rounded-xl shadow-md flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={
                 selectedIds.length === filteredBooks.length &&
                 filteredBooks.length > 0
               }
-              onChange={(e) => handleSelectAll(e.target.checked)}
+              onCheckedChange={(checked) => handleSelectAll(!!checked)}
             />
             <label className="text-gray-700 text-sm">
               Select all ({filteredBooks.length})
@@ -284,13 +268,12 @@ export default function MyLibrary() {
             <thead className="bg-gray-100 text-sm">
               <tr>
                 <th className="p-3 text-left">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={
                       selectedIds.length === filteredBooks.length &&
                       filteredBooks.length > 0
                     }
-                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
                   />
                 </th>
                 <th className="p-3 text-left">Title</th>
@@ -305,11 +288,10 @@ export default function MyLibrary() {
               {filteredBooks.map((book) => (
                 <tr key={book._id} className="border-b hover:bg-gray-50">
                   <td className="p-3">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selectedIds.includes(book._id)}
-                      onChange={(e) =>
-                        handleSelectBook(book._id, e.target.checked)
+                      onCheckedChange={(checked) =>
+                        handleSelectBook(book._id, !!checked)
                       }
                     />
                   </td>
