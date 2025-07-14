@@ -16,3 +16,23 @@ export const GET = async () => {
     );
   }
 };
+
+export const POST = async (req: Request) => {
+  try {
+    const body = await req.json();
+    await connectToDB();
+
+    const createdBook = await Book.create(body);
+
+    return NextResponse.json(
+      { success: true, book: createdBook },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("❌ Error POST /api/books:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to create book" },
+      { status: 500 }
+    );
+  }
+};
