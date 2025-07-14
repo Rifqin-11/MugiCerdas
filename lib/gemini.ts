@@ -30,6 +30,7 @@ Ubah teks berikut menjadi objek JSON dengan struktur:
 Catatan penting:
 - Jika nama pengarang ditulis dalam bentuk "nama belakang, nama depan", JANGAN ubah urutannya.
 - Tetap simpan seperti itu: "Doe, John" bukan "John Doe".
+- Jika deskripsi fisik mengandung "iv" atau angka romawi halaman awal, abaikan dan hanya ambil halaman utama dan ukuran (contoh: "iv, 16 hlm.; 29 cm." menjadi "16 hlm.; 29 cm.")
 
 Teks OCR:
 """
