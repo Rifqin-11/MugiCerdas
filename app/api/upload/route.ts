@@ -4,20 +4,15 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromImage } from "@/lib/azureOCR";
 import { analyzeBookText } from "@/lib/gemini";
-import { connectToDB } from "@/lib/mongodb";
-import Book from "@/models/Book";
 
-// Health‑check untuk memastikan endpoint hidup
 export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, message: "Upload endpoint is live" });
 }
 
-// Handle CORS preflight (opsional untuk same‑origin)
 export async function OPTIONS(req: NextRequest) {
   return NextResponse.json(null, { status: 204 });
 }
 
-// Handler utama POST untuk menerima file, OCR, parse & simpan
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -26,17 +21,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    // Ubah Blob ke Buffer
     const arrayBuffer = await fileBlob.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 1. OCR (dengan cache & polling cepat)
+    // 1. OCR
     const ocrText = await extractTextFromImage(buffer);
 
-    // 2. Analisis AI → JSON metadata
+    // 2. AI Analysis
     const rawData = await analyzeBookText(ocrText);
 
-    // 3. Lengkapi field default & tanggal input
+    // 3. Tambahkan default value
     const data = {
       ...rawData,
       tanggalInput: new Date().toISOString().split("T")[0],
@@ -46,11 +40,8 @@ export async function POST(req: NextRequest) {
       level: rawData.level || "",
     };
 
-    // 4. Simpan ke MongoDB
-    await connectToDB();
-    const savedBook = await Book.create(data);
-
-    return NextResponse.json({ success: true, book: savedBook });
+    // ⚠️ Tidak menyimpan ke database di sini
+    return NextResponse.json({ success: true, book: data });
   } catch (error) {
     console.error("Error in POST /api/upload:", error);
     return NextResponse.json(

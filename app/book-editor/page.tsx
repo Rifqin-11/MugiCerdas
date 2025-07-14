@@ -116,7 +116,12 @@ const checkDuplicateBook = async () => {
       return;
     }
 
-    // lanjutkan menyimpan
+    // langsung simpan jika tidak duplikat
+    await submitBook();
+  };
+
+
+  const submitBook = async () => {
     try {
       const extracted = sessionStorage.getItem("extractedBookData");
       const parsed = extracted ? JSON.parse(extracted) : null;
@@ -154,6 +159,7 @@ const checkDuplicateBook = async () => {
     }
   };
 
+
   const handleCancel = () => {
     toast({
       title: "Changes discarded",
@@ -189,7 +195,7 @@ const checkDuplicateBook = async () => {
             <Button
               onClick={() => {
                 setShowConfirmDialog(false);
-                handleSave();
+                submitBook();
               }}
             >
               Yes, Add It

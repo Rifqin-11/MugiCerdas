@@ -61,7 +61,9 @@ export default function MyLibrary() {
 
   const groupedBooks = Object.values(
     books.reduce((acc, book) => {
-      const key = `${book.judul}|${book.pengarang}`;
+       const key = `${book.judul?.trim().toLowerCase()}|${book.pengarang
+         ?.trim()
+         .toLowerCase()}|${book.isbn?.trim() || ""}`;
       if (!acc[key]) {
         acc[key] = { ...book, count: 1, ket: "1 eks" };
       } else {
