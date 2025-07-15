@@ -48,31 +48,18 @@ export async function PUT(
     const body: PutRequestBody = await req.json();
     await connectToDB();
 
-    // Ambil buku lama untuk membaca jumlah eks
-    const existingBook = await Book.findById(params.id);
-    if (!existingBook) {
+    const updated = await Book.findByIdAndUpdate(params.id, body, {
+      new: true,
+    });
+
+    if (!updated) {
       return NextResponse.json<ErrorResponse>(
-        { error: "Buku tidak ditemukan" },
+        { error: "Book not found" },
         { status: 404 }
       );
     }
 
-    // Ambil angka dari "ket", default 1 jika tidak ada
-    const prevKet = existingBook.ket || "1 eks";
-    const prevCount = parseInt(prevKet) || 1;
-    const newCount = prevCount + 1;
-
-    // Update "ket" dan field lainnya jika ada
-    const updated: PutSuccessResponse | null = await Book.findByIdAndUpdate(
-      params.id,
-      {
-        ...body,
-        ket: `${newCount} eks`,
-      },
-      { new: true }
-    );
-
-    return NextResponse.json(updated);
+    return NextResponse.json<PutSuccessResponse>(updated);
   } catch (error) {
     console.error("❌ Error in PUT /api/books/[id]:", error);
     return NextResponse.json<ErrorResponse>(
@@ -81,6 +68,7 @@ export async function PUT(
     );
   }
 }
+
 
 interface GetParams {
   params: Params;

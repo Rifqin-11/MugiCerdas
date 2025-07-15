@@ -21,13 +21,14 @@ interface BookData {
   sumber: string;
   subjek: string;
   noPanggil: string;
-  ket: string;
   isbn: string;
   level: string;
+  jumlahEks: number;
   createdAt?: string;
   updatedAt?: string;
   __v?: number;
 }
+
 
 export default function EditBookPage() {
   const { id } = useParams();
@@ -57,11 +58,11 @@ export default function EditBookPage() {
 
         const totalExemplars = matchingBooks.length;
 
-        // Set ket as "x eks"
         const mergedBook: BookData = {
           ...data,
-          ket: `${totalExemplars} eks`,
+          jumlahEks: data.jumlahEks || 1,
         };
+
 
         // Remove unwanted fields
         const { _id, createdAt, updatedAt, __v, ...cleaned } = mergedBook;
@@ -222,7 +223,7 @@ export default function EditBookPage() {
                   );
                 }
 
-                if (key === "ket") {
+                if (key === "jumlahEks") {
                   return (
                     <div key={key}>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -230,15 +231,17 @@ export default function EditBookPage() {
                       </label>
                       <input
                         type="number"
-                        value={parseInt(value)}
+                        min={1}
+                        value={value}
                         onChange={(e) =>
-                          handleInputChange("ket", `${e.target.value} eks`)
+                          handleInputChange("jumlahEks", e.target.value)
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   );
                 }
+
 
                 return (
                   <div key={key}>

@@ -13,7 +13,10 @@ const BookSchema = new mongoose.Schema(
     sumber: String,
     subjek: String,
     noPanggil: String,
-    ket: String,
+    jumlahEks: {
+      type: Number,
+      default: 1, // default saat input pertama
+    },
     isbn: String,
     level: String,
   },

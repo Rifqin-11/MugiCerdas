@@ -38,10 +38,9 @@ interface BookData {
   sumber: string;
   subjek: string;
   noPanggil: string;
-  ket: string;
   isbn: string;
   level: string;
-  count?: number;
+  jumlahEks: number;
 }
 
 type SortableKeys = "judul" | "pengarang" | "count";
@@ -74,10 +73,7 @@ export default function MyLibrary() {
         ?.trim()
         .toLowerCase()}|${book.isbn?.trim() || ""}`;
       if (!acc[key]) {
-        acc[key] = { ...book, count: 1, ket: "1 eks" };
-      } else {
-        acc[key].count++;
-        acc[key].ket = `${acc[key].count} eks`;
+        acc[key] = { ...book, count: book.jumlahEks || 1 };
       }
       return acc;
     }, {} as Record<string, BookData & { count: number }>)
@@ -192,7 +188,7 @@ export default function MyLibrary() {
       "No. Panggil": book.noPanggil,
       ISBN: book.isbn,
       Level: book.level,
-      Ket: `${book.count} eks`,
+      Ket: `${book.jumlahEks || book.count || 1} eks`,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet([]);
