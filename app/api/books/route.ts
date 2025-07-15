@@ -20,21 +20,53 @@ export const GET = async () => {
 export const POST = async (req: Request) => {
   try {
     const body = await req.json();
+
+    // Validasi field wajib
+    const requiredFields = [
+      "judul",
+      "pengarang",
+      "penerbit",
+      "tahunTerbit",
+      "isbn",
+      "level",
+    ];
+
+    for (const field of requiredFields) {
+      if (!body[field] || body[field].toString().trim() === "") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Field "${field}" is required and cannot be empty.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     await connectToDB();
 
-    // Cek apakah buku dengan kombinasi field ini sudah ada
+    const judul = body.judul.trim();
+    const pengarang = body.pengarang.trim();
+    const isbn = body.isbn.trim();
+
+    // Cek apakah sudah ada buku dengan judul+pengarang atau ISBN
     const existingBook = await Book.findOne({
-      judul: body.judul.trim(),
-      pengarang: body.pengarang.trim(),
-      penerbit: body.penerbit.trim(),
-      tahunTerbit: body.tahunTerbit.trim(),
-      isbn: body.isbn.trim(),
+      $or: [
+        {
+          judul: new RegExp(`^${judul}$`, "i"),
+          pengarang: new RegExp(`^${pengarang}$`, "i"),
+        },
+        {
+          isbn: new RegExp(`^${isbn}$`, "i"),
+        },
+      ],
     });
 
     if (existingBook) {
-      // Ambil jumlah eks sebelumnya
-      const previousCount = parseInt(existingBook.ket) || 1;
-      const newCount = previousCount + 1;
+      // Update jumlah eksisting
+      const prevKet = existingBook.ket || "1 eks";
+      const prevCount = parseInt(prevKet) || 1;
+      const newCount = prevCount + 1;
 
       existingBook.ket = `${newCount} eks`;
       await existingBook.save();
@@ -45,10 +77,10 @@ export const POST = async (req: Request) => {
       );
     }
 
-    // Jika belum ada, simpan sebagai entri baru
+    // Jika belum ada, buat baru
     const createdBook = await Book.create({
       ...body,
-      ket: body.ket || "1 eks", // default ke 1 eks jika tidak diisi
+      ket: body.ket || "1 eks", // default jika kosong
     });
 
     return NextResponse.json(
@@ -63,4 +95,3 @@ export const POST = async (req: Request) => {
     );
   }
 };
-
