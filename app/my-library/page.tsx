@@ -85,9 +85,11 @@ export default function MyLibrary() {
 
   const filteredBooks = groupedBooks.filter((book) => {
     const matchesSearch =
-      book.judul.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.pengarang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.subjek.toLowerCase().includes(searchTerm.toLowerCase());
+      (book.judul?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (book.pengarang?.toLowerCase() || "").includes(
+        searchTerm.toLowerCase()
+      ) ||
+      (book.subjek?.toLowerCase() || "").includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
