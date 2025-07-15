@@ -26,9 +26,9 @@ interface BookData {
   sumber: string;
   subjek: string;
   noPanggil: string;
-  ket: string;
   isbn: string;
   level: string;
+  jumlahEks: number;
 }
 
 export default function BookEditor() {
@@ -49,9 +49,9 @@ export default function BookEditor() {
     sumber: "Hibah",
     subjek: "Computer Science",
     noPanggil: "004.1 DOE i",
-    ket: "1 eks",
     isbn: "978-1-234-56789-0",
     level: "",
+    jumlahEks: 1,
   });
 
   useEffect(() => {
@@ -131,43 +131,52 @@ const checkDuplicateBook = async () => {
     await submitBook();
   };
 
-  const submitBook = async () => {
-    try {
-      const extracted = sessionStorage.getItem("extractedBookData");
-      const parsed = extracted ? JSON.parse(extracted) : null;
-      const bookId = parsed?._id;
+const submitBook = async () => {
+  try {
+    const extracted = sessionStorage.getItem("extractedBookData");
+    const parsed = extracted ? JSON.parse(extracted) : null;
+    const bookId = parsed?._id;
 
-      const res = await fetch(bookId ? `/api/books/${bookId}` : "/api/books", {
-        method: bookId ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(bookData),
-      });
+    let payload = { ...bookData };
 
-      if (!res.ok) throw new Error("Failed to save data");
-
-      toast({
-        title: "Book saved successfully!",
-        description: `"${bookData.judul}" has been ${
-          bookId ? "updated" : "added"
-        } to your library.`,
-      });
-
-      sessionStorage.removeItem("uploadedBookImage");
-      sessionStorage.removeItem("extractedBookData");
-      router.push("/my-library");
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error saving book",
-        description: "Failed to save book to database.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
+    // Jika duplikat, tambahkan jumlahEksisting + 1
+    if (bookId) {
+      const currentEks = parsed.jumlahEks || 1;
+      payload.jumlahEks = currentEks + 1;
     }
-  };
+
+    const res = await fetch(bookId ? `/api/books/${bookId}` : "/api/books", {
+      method: bookId ? "PUT" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error("Failed to save data");
+
+    toast({
+      title: "Book saved successfully!",
+      description: `"${bookData.judul}" has been ${
+        bookId ? "updated" : "added"
+      } to your library.`,
+    });
+
+    sessionStorage.removeItem("uploadedBookImage");
+    sessionStorage.removeItem("extractedBookData");
+    router.push("/my-library");
+  } catch (err) {
+    console.error(err);
+    toast({
+      title: "Error saving book",
+      description: "Failed to save book to database.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const handleCancel = () => {
     toast({
