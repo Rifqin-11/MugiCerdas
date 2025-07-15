@@ -194,7 +194,8 @@ export default function BookEditor() {
             <Button
               onClick={() => {
                 setShowConfirmDialog(false);
-                submitBook();
+                setIsDuplicate(false); // Reset agar bisa klik Save lagi jika perlu
+                submitBook(); // Lanjutkan simpan
               }}
             >
               Yes, Add It
