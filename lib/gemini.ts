@@ -4,39 +4,43 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function analyzeBookText(rawText: string) {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite-preview-06-17",
+    model: "gemini-2.5-flash-lite-preview-06-17", // Disarankan menggunakan model terbaru
   });
 
   const prompt = `
-Kamu adalah asisten perpustakaan yang mengekstrak data dari hasil OCR buku.
-Ubah teks berikut menjadi objek JSON dengan struktur:
+Kamu adalah asisten perpustakaan ahli yang mengekstrak data katalog dari hasil OCR sebuah buku.
+Ubah teks berikut menjadi objek JSON dengan struktur yang telah ditentukan.
 
 {
   "pengarang": "",
   "judul": "",
-  "edisi": "",              // Ambil angka atau tulis "1" jika cetakan pertama
+  "edisi": "",
   "kotaTerbit": "",
   "penerbit": "",
   "tahunTerbit": "",
-  "deskripsiFisik": "",     // Contoh: "20 hlm.; 22,9 cm"
-  "sumber": "",             // Jika tidak ada, tulis "hibah"
-  "subjek": "",             // Ambil hanya poin 1 dari bagian subjek
-  "noPanggil": "",          // Gabungkan semua bagian, termasuk kode koleksi (seperti "PB") dan huruf akhir (seperti "k"), contoh: "PB 398.209 598 GRI k"
-  "ket": "",                // Tuliskan "1 eks"
-  "isbn": "",               // Nomor ISBN
+  "deskripsiFisik": "",
+  "sumber": "",
+  "subjek": "",
+  "noPanggil": "",
+  "ket": "",
+  "isbn": "",
   "level": ""
 }
 
 Catatan penting:
 - Jika nama pengarang ditulis dalam bentuk "nama belakang, nama depan", JANGAN ubah urutannya.
-- Tetap simpan seperti itu: "Doe, John" bukan "John Doe".
-- Jika deskripsi fisik mengandung "iv" atau angka romawi halaman awal, abaikan dan hanya ambil halaman utama dan ukuran (contoh: "iv, 16 hlm.; 29 cm." menjadi "16 hlm.; 29 cm.")
-- Untuk "noPanggil", pastikan menyertakan **seluruh bagian**, termasuk:
-  - Kode koleksi (contoh: "PB")
-  - Klasifikasi DDC (angka)
-  - Kode tambahan (contoh: "598")
-  - Tiga huruf awal nama pengarang (contoh: "GRI")
-  - Pastikan huruf kecil di akhir No. Panggil seperti "i", "k", atau lainnya tidak diabaikan atau dihilangkan. Contoh: "PB 398.209 598 GRI i".
+- Untuk "edisi", ambil angka dari informasi cetakan atau tulis "1" jika cetakan pertama.
+- Untuk "deskripsiFisik", abaikan angka romawi untuk halaman awal (misal: "iv"). Contoh: "iv, 20 hlm.; 22,9 cm" menjadi "20 hlm.; 22,9 cm".
+- Untuk "sumber", jika tidak ada, tulis "hibah".
+- Untuk "subjek", ambil hanya poin nomor 1 dari bagian subjek.
+- Untuk "ket", selalu tuliskan "1 eks".
+- **Untuk "noPanggil"**: Temukan nomor panggil yang biasanya berada di dalam kotak Katalog Dalam Terbitan (KDT) dan mungkin terbagi menjadi beberapa baris. Gabungkan semua baris tersebut menjadi satu string tunggal, dengan setiap bagian dipisahkan oleh satu spasi. Pastikan untuk menyertakan semua elemen: kode klasifikasi (misal: PB), nomor DDC, tiga huruf nama pengarang (misal: GRI), dan satu huruf kecil judul di akhir (misal: i).
+  Contoh input dari OCR:
+  PB
+  398.209 598
+  GRI
+  i
+  Hasil JSON yang benar untuk "noPanggil": "PB 398.209 598 GRI i"
 
 Teks OCR:
 """
@@ -47,10 +51,18 @@ ${rawText}
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
-  // Ambil bagian JSON dari respon
+  // Ekstrak konten JSON dari respons teks
   const jsonStart = text.indexOf("{");
   const jsonEnd = text.lastIndexOf("}");
-  const jsonString = text.slice(jsonStart, jsonEnd + 1);
-
-  return JSON.parse(jsonString);
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    const jsonString = text.slice(jsonStart, jsonEnd + 1);
+    try {
+      return JSON.parse(jsonString);
+    } catch (e) {
+      console.error("Gagal mem-parsing JSON:", e);
+      return null;
+    }
+  }
+  console.error("Tidak dapat menemukan objek JSON dalam respons.");
+  return null;
 }
