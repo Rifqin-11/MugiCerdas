@@ -29,7 +29,7 @@ Ubah teks berikut menjadi objek JSON dengan struktur yang telah ditentukan.
 
 Catatan penting:
 - Jika nama pengarang ditulis dalam bentuk "nama belakang, nama depan", JANGAN ubah urutannya.
-- Untuk "edisi", ambil angka dari informasi cetakan atau tulis "1" jika cetakan pertama.
+- Untuk "edisi", ambil angka dari informasi cetakan atau tulis "1" jika cetakan pertama. Jika tidak ada informasi cetakan, tulis "1".
 - Untuk "deskripsiFisik", abaikan angka romawi untuk halaman awal (misal: "iv"). Contoh: "iv, 20 hlm.; 22,9 cm" menjadi "20 hlm.; 22,9 cm".
 - Untuk "sumber", jika tidak ada, tulis "hibah".
 - Untuk "subjek", ambil hanya poin nomor 1 dari bagian subjek.
