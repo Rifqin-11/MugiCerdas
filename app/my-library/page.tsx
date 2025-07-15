@@ -99,8 +99,8 @@ export default function MyLibrary() {
         const valB = b[sortConfig.key];
 
         if (sortConfig.key === "count") {
-          const numA = valA ?? 0;
-          const numB = valB ?? 0;
+          const numA = Number(valA ?? 0);
+          const numB = Number(valB ?? 0);
           return sortConfig.direction === "asc" ? numA - numB : numB - numA;
         }
 
