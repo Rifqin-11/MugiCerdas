@@ -261,7 +261,14 @@ export default function MyLibrary() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Books" value={books.length} color="blue" />
+          <StatCard
+            label="Total Books"
+            value={books.reduce(
+              (total, book) => total + (book.jumlahEks || 1),
+              0
+            )}
+            color="blue"
+          />
           <StatCard
             label="Unique Subjects"
             value={new Set(books.map((b) => b.subjek)).size}
