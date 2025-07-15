@@ -77,24 +77,34 @@ export default function BookEditor() {
     }));
   };
 
-  const checkDuplicateBook = async () => {
-    const res = await fetch(`/api/books/check-duplicate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        judul: bookData.judul.trim(),
-        pengarang: bookData.pengarang.trim(),
-        isbn: bookData.isbn.trim(),
-      }),
-    });
+const checkDuplicateBook = async () => {
+  const res = await fetch(`/api/books/check-duplicate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      judul: bookData.judul.trim(),
+      pengarang: bookData.pengarang.trim(),
+      isbn: bookData.isbn.trim(),
+    }),
+  });
 
-    if (!res.ok) return false;
+  if (!res.ok) return false;
 
-    const data = await res.json();
-    return data.exists;
-  };
+  const data = await res.json();
+
+  // Jika buku duplikat, simpan ke sessionStorage
+  if (data.exists && data.book?._id) {
+    sessionStorage.setItem(
+      "extractedBookData",
+      JSON.stringify({ ...data.book })
+    );
+  }
+
+  return data.exists;
+};
+
 
   const handleSave = async () => {
     if (!bookData.level) {

@@ -7,7 +7,7 @@ export const POST = async (req: Request) => {
     const { judul, pengarang, isbn } = await req.json();
     await connectToDB();
 
-    const exists = await Book.exists({
+    const existingBook = await Book.findOne({
       $or: [
         {
           judul: { $regex: new RegExp(`^${judul}$`, "i") },
@@ -19,7 +19,10 @@ export const POST = async (req: Request) => {
       ],
     });
 
-    return NextResponse.json({ exists: !!exists });
+    return NextResponse.json({
+      exists: !!existingBook,
+      book: existingBook || null,
+    });
   } catch (error) {
     console.error("❌ Error checking duplicate:", error);
     return NextResponse.json({ exists: false }, { status: 500 });
